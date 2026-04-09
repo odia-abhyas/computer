@@ -4,38 +4,35 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EduMocker Test</title>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
 <style>
-  .q-image-wrap{margin:12px 0;display:flex;justify-content:center;align-items:center}
-  .img-loader{width:50px;height:50px;border:5px solid #ddd;border-top:5px solid #2c5364;border-radius:50%;animation:spin 1s linear infinite}
-  .q-image{max-width:100%;border-radius:12px;display:none}
-  *{box-sizing:border-box;font-family:Arial,Helvetica,sans-serif}
-  body{margin:0;background:#f4f6f8;padding:0}
-  .loader{height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center}
-  .circle{width:70px;height:70px;border:7px solid #ddd;border-top:7px solid #2c5364;border-radius:50%;animation:spin 1s linear infinite}
-  @keyframes spin{to{transform:rotate(360deg)}}
-  .hidden{display:none}
-  .header{background:#fff;padding:12px;display:flex;justify-content:space-between;border-bottom:1px solid #ddd}
-  .container{padding:14px}
-  button{padding:12px;border:none;border-radius:10px;background:#2c5364;color:#fff;font-size:15px;cursor:pointer}
-  button:disabled{opacity:.4}
-  .q-inst{font-size:14px}
-  .question{font-weight:bold;margin:8px 0}
-  .option{background:#fff;border:1px solid #ccc;padding:12px;border-radius:10px;margin-bottom:10px;cursor:pointer}
-  .option.selected{background:#e8f1f5;border-color:#2c5364}
-  .nav{display:flex;justify-content:space-between;margin:10px 0}
-  .grid{display:flex;flex-wrap:wrap;gap:6px}
-  .grid div{width:32px;height:32px;border:1px solid #2c5364;display:flex;align-items:center;justify-content:center;cursor:pointer}
-  .grid .attempted{background:#2c5364;color:#fff;border-radius:50%}
-  .score{padding:16px}
-  .card{background:#fff;padding:12px;border-radius:12px;margin-bottom:10px}
-  .filter{display:flex;gap:6px;margin-top:10px}
-  .filter button{flex:1;background:#ccc;color:#000}
-  .filter .active{background:#2c5364;color:#fff}
-  .popup{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;justify-content:center;align-items:center}
-  .popup-box{background:#fff;padding:18px;border-radius:14px;width:85%;text-align:center}
+*{box-sizing:border-box;font-family:Arial,Helvetica,sans-serif}
+body{margin:0;background:#f4f6f8;padding:0}
+.loader{height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center}
+.circle{width:70px;height:70px;border:7px solid #ddd;border-top:7px solid #2c5364;border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.hidden{display:none}
+.header{background:#fff;padding:12px;display:flex;justify-content:space-between;border-bottom:1px solid #ddd}
+.container{padding:14px}
+button{padding:12px;border:none;border-radius:10px;background:#2c5364;color:#fff;font-size:15px;cursor:pointer}
+button:disabled{opacity:.4}
+.q-inst{font-size:14px}
+.question{font-weight:bold;margin:8px 0}
+.option{background:#fff;border:1px solid #ccc;padding:12px;border-radius:10px;margin-bottom:10px;cursor:pointer}
+.option.selected{background:#e8f1f5;border-color:#2c5364}
+.nav{display:flex;justify-content:space-between;margin:10px 0}
+.grid{display:flex;flex-wrap:wrap;gap:6px}
+.grid div{width:32px;height:32px;border:1px solid #2c5364;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.grid .attempted{background:#2c5364;color:#fff;border-radius:50%}
+.score{padding:16px}
+.card{background:#fff;padding:12px;border-radius:12px;margin-bottom:10px}
+.filter{display:flex;gap:6px;margin-top:10px}
+.filter button{flex:1;background:#ccc;color:#000}
+.filter .active{background:#2c5364;color:#fff}
+.popup{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;justify-content:center;align-items:center}
+.popup-box{background:#fff;padding:18px;border-radius:14px;width:85%;text-align:center}
+.exp-toggle{color:#2c5364;font-size:14px;margin-top:6px;cursor:pointer}
+.exp-text{font-size:14px;margin-top:6px;display:none;background:#f1f6f9;padding:8px;border-radius:8px}
 </style>
 </head>
 <body>
@@ -48,7 +45,7 @@
 <div id="instruction" class="hidden container">
   <h3>Instructions</h3>
   <ul>
-    <li>Time: 15 Minutes</li>
+    <li>Time: 5 Minutes</li>
     <li>Negative Marking: 0.25 per wrong answer</li>
     <li>Submit anytime</li>
   </ul>
@@ -57,18 +54,12 @@
 
 <div id="test" class="hidden">
   <div class="header">
-    <b>OSSC PYQ Prelims 23Jun, 2024</b>
-    <span id="timer">15:00</span>
+    <b>EduMocker Smart Quiz</b>
+    <span id="timer">5:00</span>
   </div>
   <div class="container">
-    <div class="q-inst" id="qInst"></div>
+    <div class="q-inst">Choose the correct answer</div>
     <div class="question" id="question"></div>
-
-    <div id="imgWrap" class="q-image-wrap hidden">
-      <div id="imgLoader" class="img-loader"></div>
-      <img id="qImg" class="q-image">
-    </div>
-
     <div id="options"></div>
 
     <div class="nav">
@@ -83,7 +74,7 @@
 </div>
 
 <div id="score" class="hidden score">
-  <h3>OSSC PYQ Prelims 23Jun, 2024</h3>
+  <h3>EduMocker </h3>
   <p id="userScore"></p>
   <div class="card" id="stats"></div>
 
@@ -96,36 +87,32 @@
 
   <div id="review"></div>
   <br>
-  <button onclick="reattempt()">Reattempt</button>
+  <center><button onclick="reattempt()">Reattempt</button></center>
 </div>
 
 <div class="popup" id="popup">
   <div class="popup-box">
-    <p>Your previous score & rank will be replaced.</p>
+    <p>Your previous score will be replaced.</p>
     <button onclick="confirmReattempt()">OK</button>
   </div>
 </div>
 
 <script>
-firebase.initializeApp({
-  apiKey: "AIzaSyAm8LD9iSm24vG2rc_bBSjXuATXxs7-lbE",
-  authDomain: "odia-abhyas.firebaseapp.com",
-  projectId: "odia-abhyas"
-});
-const db = firebase.firestore();
 
-const TEST_ID = "computer-1";
+
+    function shuffleArray(arr){
+  for(let i = arr.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
+const TEST_ID = "Computer-1";
 const STORAGE_KEY = "RESULT_" + TEST_ID;
-const TEST_DURATION_MINUTES = 15;
+const TEST_DURATION_MINUTES = 5;
 const NEGATIVE_MARK = 0.25;
 
-const user = {
-  phone: localStorage.getItem("user_phone"),
-  name: localStorage.getItem("user_name")
-};
-if(!user.phone){ alert("Login required"); throw ""; }
+const user = { name: "" };
 
-/* ===== Added explanations to questions ===== */
 const questions = [
 
 {q:"Which is not the portable computer?",
@@ -252,29 +239,26 @@ const questions = [
    o:["F3","F5","F7","F11"],
    a:3,
    exp:"F11 creates a default chart on a new sheet from selected data in Excel."}
-
-
-
-
-
-
-
-
-
-
-
-
   
-  ];
-/* ===== End questions with explanations ===== */
+  
+  
+  
+  
+  
+  
+  
+  
+  
+];
 
 let answers={}, index=0, timeLeft, timerInt;
 
-window.onload = () => {
-  const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+window.onload=()=>{
+  const saved=localStorage.getItem(STORAGE_KEY);
   if(saved){
-    if(saved.answers) answers = saved.answers; // restore previous answers
-    showScore(saved);
+    const data=JSON.parse(saved);
+    answers=data.answers || {};
+    showScore(data);
   } else {
     loader.classList.add("hidden");
     instruction.classList.remove("hidden");
@@ -282,76 +266,54 @@ window.onload = () => {
 };
 
 function startTest(){
-  // Request Fullscreen Mode
-  const elem = document.documentElement; // This selects the whole page
-  if (elem.requestFullscreen) {
-    elem.requestFullscreen();
-  } else if (elem.webkitRequestFullscreen) { /* Safari */
-    elem.webkitRequestFullscreen();
-  } else if (elem.msRequestFullscreen) { /* IE11 */
-    elem.msRequestFullscreen();
-  }
-
-  // Your existing logic
+    shuffleArray(questions);
   instruction.classList.add("hidden");
   test.classList.remove("hidden");
-  timeLeft = TEST_DURATION_MINUTES * 60;
-  timerInt = setInterval(runTimer, 1000);
+  timeLeft=TEST_DURATION_MINUTES*60;
+  timerInt=setInterval(runTimer,1000);
   buildGrid();
   loadQ();
 }
+
 function runTimer(){
   if(timeLeft<=0){submitTest();return;}
   timeLeft--;
-  timer.innerText=`${String(Math.floor(timeLeft/60)).padStart(2,"0")}:${String(timeLeft%60).padStart(2,"0")}`;
+  timer.innerText=
+    `${String(Math.floor(timeLeft/60)).padStart(2,"0")}:${String(timeLeft%60).padStart(2,"0")}`;
 }
 
 function loadQ(){
-  const q = questions[index];
-    qInst.innerHTML = q.inst || "Choose the correct answer";
-  question.innerHTML = (index + 1) + ". " + q.q;
+  const q=questions[index];
+  question.innerHTML=q.q;
+options.innerHTML="";
 
-  /* ===== IMAGE LOGIC ===== */
-  imgWrap.classList.add("hidden");
-  qImg.style.display = "none";
-  imgLoader.style.display = "block";
+// Create option objects with index
+let opts = q.o.map((text, i) => ({ text, index: i }));
 
-  if(q.img){
-    imgWrap.classList.remove("hidden");
-    qImg.src = q.img;
+// Shuffle options
+shuffleArray(opts);
 
-    qImg.onload = () => {
-      imgLoader.style.display = "none";
-      qImg.style.display = "block";
-    };
+opts.forEach((opt)=>{
+  const d=document.createElement("div");
 
-    qImg.onerror = () => {
-      imgWrap.classList.add("hidden");
-    };
-  }
+  d.className="option"+(answers[index]===opt.index?" selected":"");
+  d.innerText=opt.text;
 
-  options.innerHTML="";
-  q.o.forEach((t,i)=>{
-    const d=document.createElement("div");
-    d.className="option"+(answers[index]===i?" selected":"");
-    d.innerText=t;
-    d.onclick=()=>{
-      answers[index]=answers[index]===i?null:i;
+  d.onclick=()=>{
+    answers[index]=answers[index]===opt.index?null:opt.index;
 
-      /* ===== Save answers to localStorage ===== */
-      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
-      saved.answers = answers;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
-      /* ===== End save ===== */
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+    saved.answers = answers;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
 
-      loadQ();
-      updateGrid();
-    };
-    options.appendChild(d);
-  });
+    loadQ();
+    updateGrid();
+  };
 
-  prevBtn.disabled = index === 0;
-  nextBtn.disabled = index === questions.length - 1;
+  options.appendChild(d);
+});
+  prevBtn.disabled=index===0;
+  nextBtn.disabled=index===questions.length-1;
 }
 
 function nextQ(){index++;loadQ();}
@@ -365,6 +327,7 @@ function buildGrid(){
     d.onclick=()=>{index=i;loadQ();};
     grid.appendChild(d);
   });
+  updateGrid();
 }
 
 function updateGrid(){
@@ -375,7 +338,7 @@ function submitTest(){
   clearInterval(timerInt);
   test.classList.add("hidden");
   loader.classList.remove("hidden");
-  loader.querySelector("p").innerText="Saving score & calculating rank…";
+  loader.querySelector("p").innerText="Calculating score…";
 
   let correct=0,wrong=0;
   questions.forEach((q,i)=>{
@@ -385,37 +348,23 @@ function submitTest(){
 
   const score=+(correct-wrong*NEGATIVE_MARK).toFixed(2);
 
-  const baseData={
-    phone:user.phone,
+  const data={
     name:user.name,
     score,correct,wrong,
     unattempted:questions.length-correct-wrong,
-    updatedAt:Date.now()
+    answers
   };
 
-  db.collection("tests").doc(TEST_ID).collection("results").doc(user.phone)
-  .set(baseData,{merge:true})
-  .then(()=>calculateRank(baseData));
-}
-
-function calculateRank(myData){
-  db.collection("tests").doc(TEST_ID).collection("results").get()
-  .then(snap=>{
-    const arr=snap.docs.map(d=>({...d.data(),id:d.id}));
-    arr.sort((a,b)=>b.score-a.score);
-    const rank=arr.findIndex(x=>x.id===user.phone)+1;
-    myData.rankText=`${rank} / ${arr.length}`;
-    myData.answers=answers;
-    localStorage.setItem(STORAGE_KEY,JSON.stringify(myData));
-    showScore(myData);
-  });
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
+  showScore(data);
 }
 
 function showScore(r){
   loader.classList.add("hidden");
   score.classList.remove("hidden");
   userScore.innerText=`Hi ${r.name}, your score is ${r.score}`;
-  stats.innerHTML=`Correct: ${r.correct}<br>Wrong: ${r.wrong}<br>Unattempted: ${r.unattempted}<br><b>Rank: ${r.rankText}</b>`;
+  stats.innerHTML=
+    `Correct: ${r.correct}<br>Wrong: ${r.wrong}<br>Unattempted: ${r.unattempted}<br><b></b>`;
   filterQ("all",document.querySelector(".filter button"));
 }
 
@@ -428,19 +377,24 @@ function filterQ(type,btn){
     if(type==="correct"&&a!==q.a)return;
     if(type==="wrong"&&(a==null||a===q.a))return;
     if(type==="unattempted"&&a!=null)return;
+
     const c=document.createElement("div");
     c.className="card";
     c.innerHTML=`
       <b>${q.q}</b><br>
       Your: ${a!=null?q.o[a]:"—"}<br>
-      Correct: ${q.o[q.a]}<br>
-      <details>
-        <summary>Show Explanation</summary>
-        <p>${q.exp || "No explanation provided."}</p>
-      </details>
+      Correct: ${q.o[q.a]}
+      <div class="exp-toggle" onclick="toggleExp(this)">Show Explanation ▼</div>
+      <div class="exp-text">${q.e}</div>
     `;
     review.appendChild(c);
   });
+}
+
+function toggleExp(el){
+  const box=el.nextElementSibling;
+  box.style.display=box.style.display==="block"?"none":"block";
+  el.innerHTML=box.style.display==="block"?"Hide Explanation ▲":"Show Explanation ▼";
 }
 
 function reattempt(){popup.style.display="flex";}
