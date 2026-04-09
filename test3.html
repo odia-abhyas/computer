@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EduMocker Test</title>
+
+<style>
+*{box-sizing:border-box;font-family:Arial,Helvetica,sans-serif}
+body{margin:0;background:#f4f6f8;padding:0}
+.loader{height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center}
+.circle{width:70px;height:70px;border:7px solid #ddd;border-top:7px solid #2c5364;border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.hidden{display:none}
+.header{background:#fff;padding:12px;display:flex;justify-content:space-between;border-bottom:1px solid #ddd}
+.container{padding:14px}
+button{padding:12px;border:none;border-radius:10px;background:#2c5364;color:#fff;font-size:15px;cursor:pointer}
+button:disabled{opacity:.4}
+.q-inst{font-size:14px}
+.question{font-weight:bold;margin:8px 0}
+.option{background:#fff;border:1px solid #ccc;padding:12px;border-radius:10px;margin-bottom:10px;cursor:pointer}
+.option.selected{background:#e8f1f5;border-color:#2c5364}
+.nav{display:flex;justify-content:space-between;margin:10px 0}
+.grid{display:flex;flex-wrap:wrap;gap:6px}
+.grid div{width:32px;height:32px;border:1px solid #2c5364;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.grid .attempted{background:#2c5364;color:#fff;border-radius:50%}
+.score{padding:16px}
+.card{background:#fff;padding:12px;border-radius:12px;margin-bottom:10px}
+.filter{display:flex;gap:6px;margin-top:10px}
+.filter button{flex:1;background:#ccc;color:#000}
+.filter .active{background:#2c5364;color:#fff}
+.popup{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;justify-content:center;align-items:center}
+.popup-box{background:#fff;padding:18px;border-radius:14px;width:85%;text-align:center}
+.exp-toggle{color:#2c5364;font-size:14px;margin-top:6px;cursor:pointer}
+.exp-text{font-size:14px;margin-top:6px;display:none;background:#f1f6f9;padding:8px;border-radius:8px}
+</style>
+</head>
+<body>
+
+<div id="loader" class="loader">
+  <div class="circle"></div>
+  <p>Checking user…</p>
+</div>
+
+<div id="instruction" class="hidden container">
+  <h3>Instructions</h3>
+  <ul>
+    <li>Time: 5 Minutes</li>
+    <li>Negative Marking: 0.25 per wrong answer</li>
+    <li>Submit anytime</li>
+  </ul>
+  <button onclick="startTest()">Start Test</button>
+</div>
+
+<div id="test" class="hidden">
+  <div class="header">
+    <b>EduMocker Smart Quiz</b>
+    <span id="timer">5:00</span>
+  </div>
+  <div class="container">
+    <div class="q-inst">Choose the correct answer</div>
+    <div class="question" id="question"></div>
+    <div id="options"></div>
+
+    <div class="nav">
+      <button id="prevBtn" onclick="prevQ()">Previous</button>
+      <button id="nextBtn" onclick="nextQ()">Next</button>
+    </div>
+
+    <div class="grid" id="grid"></div>
+    <br>
+    <button onclick="submitTest()">Submit Test</button>
+  </div>
+</div>
+
+<div id="score" class="hidden score">
+  <h3>EduMocker </h3>
+  <p id="userScore"></p>
+  <div class="card" id="stats"></div>
+
+  <div class="filter">
+    <button class="active" onclick="filterQ('all',this)">All</button>
+    <button onclick="filterQ('correct',this)">Correct</button>
+    <button onclick="filterQ('wrong',this)">Wrong</button>
+    <button onclick="filterQ('unattempted',this)">Unattempted</button>
+  </div>
+
+  <div id="review"></div>
+  <br>
+  <center><button onclick="reattempt()">Reattempt</button></center>
+</div>
+
+<div class="popup" id="popup">
+  <div class="popup-box">
+    <p>Your previous score will be replaced.</p>
+    <button onclick="confirmReattempt()">OK</button>
+  </div>
+</div>
+
+<script>
+
+
+    function shuffleArray(arr){
+  for(let i = arr.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
+const TEST_ID = "Computer-3";
+const STORAGE_KEY = "RESULT_" + TEST_ID;
+const TEST_DURATION_MINUTES = 5;
+const NEGATIVE_MARK = 0.25;
+
+const user = { name: "" };
+
+const questions = [
+
+{q:"On a CD-RW you can-",
+   o:["Read and write information","Only read information","Only write information","Read, write and rewrite information"],
+   a:3,
+   exp:"Compact Disc Rewriteable (CD-RW) is a fully rewriteable media, meaning any spot on a CD-RW disc can be rewritten up to 1,000 times."},
+
+{q:"In computer terminology, information means",
+   o:["Raw data","Data in more useful","Alphanumeric data","Program"],
+   a:1,
+   exp:"Information is stimuli that has meaning in some context for its receiver. Data after processing becomes information which is more useful."},
+
+{q:"After a picture has been taken with a digital camera and processed appropriately, the actual print of the picture is considered.",
+   o:["Data","Input","Output","The process"],
+   a:2,
+   exp:"After processing, the actual print of the picture is considered Output. Printer is an output device that makes a hard copy."},
+
+{q:"What is output?",
+   o:["What the processor takes from the user","What the user gives to the processor","What the processor gets from the user","What the processor gives to the user"],
+   a:3,
+   exp:"Output is defined as the act of producing something, the amount of something produced or the process in which something is delivered. It is what the processor gives to the user."},
+
+{q:"What is the main difference between a mainframe and a super computer?",
+   o:["Super computer is much larger than mainframe computers","Super computers are much smaller than mainframe computers","Supercomputers are focused to execute few programs as fast as possible while mainframe uses its power to execute as many programs concurrently","Supercomputers are focused to execute as many programs as possible while mainframe uses its power to execute few programs as fast as possible"],
+   a:2,
+   exp:"Supercomputers are focused to execute few programs as fast as possible while mainframe uses its power to execute as many programs concurrently. Main focus of supercomputer is speed, mainframe is extensive data handling."},
+
+{q:"Programs such as Mozilla Firefox that serve as navigable windows into the Web are called..........",
+   o:["Hypertext","Networks","Internet","Web browsers"],
+   a:3,
+   exp:"A web browser is a software application for accessing information on the World Wide Web. It retrieves content from a web server and displays the page."},
+
+{q:"What is the function of Recycle Bin?",
+   o:["Store deleted file","Store temporary file","Store corrupted file","Store Document file"],
+   a:0,
+   exp:"Recycle Bin in Microsoft Windows is temporary storage for files that have been deleted but not yet permanently erased from the file system."},
+
+{q:"Which device cannot be shared in network?",
+   o:["Floppy","Keyword","Computer","Printer"],
+   a:0,
+   exp:"Floppy disk is a physical storage device that cannot be shared over network like printers or computers. Note: 'Keyword' likely typo for 'Keyboard'."},
+
+{q:"A right click on the desktop itself will........",
+   o:["Open the Display Properties dialog box","Show a context - sensitive menu","Open the Control Panel","Minimize all open applications"],
+   a:1,
+   exp:"Right click on desktop shows a context-sensitive menu. It is customized through properties menu selection for Windows system elements."},
+
+{q:"The advantage of using a spreadsheet is:",
+   o:["Calculations can be done automatically.","Changing data automatically updates calculations","More flexibility","All of the above"],
+   a:3,
+   exp:"Spreadsheets allow automatic calculations, auto-update on data change, and provide flexibility for analysis."},
+
+{q:"Documentations should include...",
+   o:["Destination and users of the output data","Source of input data","Information on the purpose of the workbook","All of above"],
+   a:3,
+   exp:"Documentation is any communicable material used to describe, explain or instruct regarding attributes like parts, assembly, installation, maintenance and use."},
+
+{q:"To edit the selected cell in MS excel-",
+   o:["Press F1","Press F2","Press F4","Press F5"],
+   a:1,
+   exp:"F2 is the keyboard shortcut for editing a cell in Excel on Windows. Double-click also works."},
+
+{q:"You can convert existing Excel worksheet data and charts to HTML document by using the",
+   o:["FTP Wizard","Internet Assistant Wizard","Intranet Wizard","Import Wizard"],
+   a:1,
+   exp:"Internet Assistant for Excel is an add-in wizard that allows you to create and distribute Excel documents online for viewing with any popular browser."},
+
+{q:"Which of the following storage media provides sequential access only?",
+   o:["Floppy disk","Magnetic disk","Magnetic tape","Optical disk"],
+   a:2,
+   exp:"Magnetic tape data storage is a system for storing digital information on magnetic tape using digital recording. It provides sequential access."},
+
+{q:"What is the storage area for e-mail messages called?",
+   o:["A folder","A directory","A mailbox","The hard disk"],
+   a:2,
+   exp:"A mailbox is the storage location of electronic mail messages found on a remote server or downloaded to the user's hard drive."},
+
+{q:"The set of parallel electrical conducting lines through which different components on the mother board of a PC unit are linked together are called:",
+   o:["Conductors","Buses","Slide Master","Consecutives"],
+   a:1,
+   exp:"A bus is a high-speed internal connection. Buses send control signals and data between processor and other components."},
+
+{q:"A PDA's memory contents remain intact when it is turned off because:",
+   o:["A battery keeps current available for RAM","The memory contents are synchronized with a desktop","The memory contents are copied to flash cards","The memory contents are stored in ROM"],
+   a:3,
+   exp:"PDA memory contents remain intact because they are stored in ROM/non-volatile memory."},
+
+{q:"A network of geographically distant computers and terminals is called a-",
+   o:["Integrated Services Digital Network (ISDN)","Metropolitan area network (MAN)","Wide area network (WAN)","Local area network (LAN)"],
+   a:2,
+   exp:"A wide area network (WAN) is a network of geographically distant computers and terminals."},
+
+{q:"One byte represents:",
+   o:["Eight characters","Eight bits","A single digit with two possible states","A word"],
+   a:1,
+   exp:"The byte is a unit of digital information that most commonly consists of eight bits."},
+
+{q:"Saving files in HTML format:",
+   o:["Makes it possible for anyone to view the file in a Web browser","Increases file conversion costs","Decreases software compatibility","All of the above"],
+   a:0,
+   exp:"HTML is the standard markup language for documents designed to be displayed in a web browser. Saving in HTML makes it viewable in any browser."},
+
+{q:"Which of the following would NOT be performed with application software?",
+   o:["Financial report sent to investors","Hard disk cleanup","Charts for a sales meeting presentation","Customer list used for mailing invoices"],
+   a:1,
+   exp:"Hard disk cleanup is a system maintenance utility function, not application software. Others are tasks done by application software like Word, Excel."},
+
+{q:"Which of the following statements is TRUE about the public switched telephone network (PSTN)?",
+   o:["PSTN is a packet-switching network","PSTN is comprised of a variety of physical media, including twisted pair and fiber optic cable","PSTN is exclusively a digital network system","PSTN is only used for voice transmissions, while the Internet is used for data transmissions"],
+   a:1,
+   exp:"PSTN is the world's collection of interconnected voice-oriented public telephone networks. It is comprised of variety of physical media including twisted pair and fiber optic cable."},
+
+{q:"Which of the following best describes the difference between the Internet and the World Wide Web?",
+   o:["The Internet is the collection of computers, while the World Wide Web is the wiring and transmission protocols that connect them","The Internet carries traffic for schools, government offices, and other public organizations, while the World Wide Web carries commercial traffic","The Internet consists of software programs such as e-mail and IRC, while the World Wide Web is a collection of Web pages","The Internet is the physical network of global computers, while the World Wide Web is many hypertext documents distributed globally over many computers"],
+   a:3,
+   exp:"The Internet is the physical network of global computers, while the World Wide Web is many hypertext documents distributed globally over many computers."},
+
+{q:"Which of the following runs on a user's local computer and is used to request and display Web pages?",
+   o:["FTP","Web browser","Web server","HTML"],
+   a:1,
+   exp:"A web browser runs on user's local computer and is used to request and display Web pages from a web server."},
+
+{q:"Which of the following computer types is most powerful?",
+   o:["Professional workstation","Internet appliance","Desktop computer","Network computer"],
+   a:0,
+   exp:"A workstation is a special computer designed for technical or scientific applications. Workstations are more powerful than desktop computers."}
+  
+  
+  
+  
+  
+  
+];
+
+let answers={}, index=0, timeLeft, timerInt;
+
+window.onload=()=>{
+  const saved=localStorage.getItem(STORAGE_KEY);
+  if(saved){
+    const data=JSON.parse(saved);
+    answers=data.answers || {};
+    showScore(data);
+  } else {
+    loader.classList.add("hidden");
+    instruction.classList.remove("hidden");
+  }
+};
+
+function startTest(){
+    shuffleArray(questions);
+  instruction.classList.add("hidden");
+  test.classList.remove("hidden");
+  timeLeft=TEST_DURATION_MINUTES*60;
+  timerInt=setInterval(runTimer,1000);
+  buildGrid();
+  loadQ();
+}
+
+function runTimer(){
+  if(timeLeft<=0){submitTest();return;}
+  timeLeft--;
+  timer.innerText=
+    `${String(Math.floor(timeLeft/60)).padStart(2,"0")}:${String(timeLeft%60).padStart(2,"0")}`;
+}
+
+function loadQ(){
+  const q=questions[index];
+  question.innerHTML=q.q;
+options.innerHTML="";
+
+// Create option objects with index
+let opts = q.o.map((text, i) => ({ text, index: i }));
+
+// Shuffle options
+shuffleArray(opts);
+
+opts.forEach((opt)=>{
+  const d=document.createElement("div");
+
+  d.className="option"+(answers[index]===opt.index?" selected":"");
+  d.innerText=opt.text;
+
+  d.onclick=()=>{
+    answers[index]=answers[index]===opt.index?null:opt.index;
+
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+    saved.answers = answers;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+
+    loadQ();
+    updateGrid();
+  };
+
+  options.appendChild(d);
+});
+  prevBtn.disabled=index===0;
+  nextBtn.disabled=index===questions.length-1;
+}
+
+function nextQ(){index++;loadQ();}
+function prevQ(){index--;loadQ();}
+
+function buildGrid(){
+  grid.innerHTML="";
+  questions.forEach((_,i)=>{
+    const d=document.createElement("div");
+    d.innerText=i+1;
+    d.onclick=()=>{index=i;loadQ();};
+    grid.appendChild(d);
+  });
+  updateGrid();
+}
+
+function updateGrid(){
+  [...grid.children].forEach((d,i)=>d.classList.toggle("attempted",answers[i]!=null));
+}
+
+function submitTest(){
+  clearInterval(timerInt);
+  test.classList.add("hidden");
+  loader.classList.remove("hidden");
+  loader.querySelector("p").innerText="Calculating score…";
+
+  let correct=0,wrong=0;
+  questions.forEach((q,i)=>{
+    if(answers[i]==null)return;
+    answers[i]===q.a?correct++:wrong++;
+  });
+
+  const score=+(correct-wrong*NEGATIVE_MARK).toFixed(2);
+
+  const data={
+    name:user.name,
+    score,correct,wrong,
+    unattempted:questions.length-correct-wrong,
+    answers
+  };
+
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
+  showScore(data);
+}
+
+function showScore(r){
+  loader.classList.add("hidden");
+  score.classList.remove("hidden");
+  userScore.innerText=`Hi ${r.name}, your score is ${r.score}`;
+  stats.innerHTML=
+    `Correct: ${r.correct}<br>Wrong: ${r.wrong}<br>Unattempted: ${r.unattempted}<br><b></b>`;
+  filterQ("all",document.querySelector(".filter button"));
+}
+
+function filterQ(type,btn){
+  document.querySelectorAll(".filter button").forEach(b=>b.classList.remove("active"));
+  btn.classList.add("active");
+  review.innerHTML="";
+  questions.forEach((q,i)=>{
+    const a=answers[i];
+    if(type==="correct"&&a!==q.a)return;
+    if(type==="wrong"&&(a==null||a===q.a))return;
+    if(type==="unattempted"&&a!=null)return;
+
+    const c=document.createElement("div");
+    c.className="card";
+    c.innerHTML=`
+      <b>${q.q}</b><br>
+      Your: ${a!=null?q.o[a]:"—"}<br>
+      Correct: ${q.o[q.a]}
+      <div class="exp-toggle" onclick="toggleExp(this)">Show Explanation ▼</div>
+      <div class="exp-text">${q.e}</div>
+    `;
+    review.appendChild(c);
+  });
+}
+
+function toggleExp(el){
+  const box=el.nextElementSibling;
+  box.style.display=box.style.display==="block"?"none":"block";
+  el.innerHTML=box.style.display==="block"?"Hide Explanation ▲":"Show Explanation ▼";
+}
+
+function reattempt(){popup.style.display="flex";}
+function confirmReattempt(){localStorage.removeItem(STORAGE_KEY);location.reload();}
+</script>
+</body>
+</html>
