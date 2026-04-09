@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EduMocker Test</title>
+
+<style>
+*{box-sizing:border-box;font-family:Arial,Helvetica,sans-serif}
+body{margin:0;background:#f4f6f8;padding:0}
+.loader{height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center}
+.circle{width:70px;height:70px;border:7px solid #ddd;border-top:7px solid #2c5364;border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.hidden{display:none}
+.header{background:#fff;padding:12px;display:flex;justify-content:space-between;border-bottom:1px solid #ddd}
+.container{padding:14px}
+button{padding:12px;border:none;border-radius:10px;background:#2c5364;color:#fff;font-size:15px;cursor:pointer}
+button:disabled{opacity:.4}
+.q-inst{font-size:14px}
+.question{font-weight:bold;margin:8px 0}
+.option{background:#fff;border:1px solid #ccc;padding:12px;border-radius:10px;margin-bottom:10px;cursor:pointer}
+.option.selected{background:#e8f1f5;border-color:#2c5364}
+.nav{display:flex;justify-content:space-between;margin:10px 0}
+.grid{display:flex;flex-wrap:wrap;gap:6px}
+.grid div{width:32px;height:32px;border:1px solid #2c5364;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.grid .attempted{background:#2c5364;color:#fff;border-radius:50%}
+.score{padding:16px}
+.card{background:#fff;padding:12px;border-radius:12px;margin-bottom:10px}
+.filter{display:flex;gap:6px;margin-top:10px}
+.filter button{flex:1;background:#ccc;color:#000}
+.filter .active{background:#2c5364;color:#fff}
+.popup{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;justify-content:center;align-items:center}
+.popup-box{background:#fff;padding:18px;border-radius:14px;width:85%;text-align:center}
+.exp-toggle{color:#2c5364;font-size:14px;margin-top:6px;cursor:pointer}
+.exp-text{font-size:14px;margin-top:6px;display:none;background:#f1f6f9;padding:8px;border-radius:8px}
+</style>
+</head>
+<body>
+
+<div id="loader" class="loader">
+  <div class="circle"></div>
+  <p>Checking user…</p>
+</div>
+
+<div id="instruction" class="hidden container">
+  <h3>Instructions</h3>
+  <ul>
+    <li>Time: 5 Minutes</li>
+    <li>Negative Marking: 0.25 per wrong answer</li>
+    <li>Submit anytime</li>
+  </ul>
+  <button onclick="startTest()">Start Test</button>
+</div>
+
+<div id="test" class="hidden">
+  <div class="header">
+    <b>EduMocker Smart Quiz</b>
+    <span id="timer">5:00</span>
+  </div>
+  <div class="container">
+    <div class="q-inst">Choose the correct answer</div>
+    <div class="question" id="question"></div>
+    <div id="options"></div>
+
+    <div class="nav">
+      <button id="prevBtn" onclick="prevQ()">Previous</button>
+      <button id="nextBtn" onclick="nextQ()">Next</button>
+    </div>
+
+    <div class="grid" id="grid"></div>
+    <br>
+    <button onclick="submitTest()">Submit Test</button>
+  </div>
+</div>
+
+<div id="score" class="hidden score">
+  <h3>EduMocker </h3>
+  <p id="userScore"></p>
+  <div class="card" id="stats"></div>
+
+  <div class="filter">
+    <button class="active" onclick="filterQ('all',this)">All</button>
+    <button onclick="filterQ('correct',this)">Correct</button>
+    <button onclick="filterQ('wrong',this)">Wrong</button>
+    <button onclick="filterQ('unattempted',this)">Unattempted</button>
+  </div>
+
+  <div id="review"></div>
+  <br>
+  <center><button onclick="reattempt()">Reattempt</button></center>
+</div>
+
+<div class="popup" id="popup">
+  <div class="popup-box">
+    <p>Your previous score will be replaced.</p>
+    <button onclick="confirmReattempt()">OK</button>
+  </div>
+</div>
+
+<script>
+
+
+    function shuffleArray(arr){
+  for(let i = arr.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
+const TEST_ID = "Computer-2";
+const STORAGE_KEY = "RESULT_" + TEST_ID;
+const TEST_DURATION_MINUTES = 5;
+const NEGATIVE_MARK = 0.25;
+
+const user = { name: "" };
+
+const questions = [
+
+{q:"Which file starts MS Word?",
+   o:["Winword.exe","Word.exe","Msword.exe","Word2003.exe"],
+   a:0,
+   exp:"Winword.exe is the executable file name for Microsoft Word which is used when Word is launched."},
+
+{q:"*_*_ Means that a transaction is processed fast enough for the result to come back and be acted upon right away.",
+   o:["Real-time processing","Records processing","Batch processing","All of the above"],
+   a:0,
+   exp:"Real-time processing or reactive computing is for hardware and software systems subject to a 'real-time constraint', where programs must guarantee response within specified time constraints."},
+
+{q:"One of the functions of the arithmetic logic unit is to:",
+   o:["Receive data from the registers","Convert negative numbers to hexadecimal code","Send logical operations, such as AND or NOT, to the alphabetic unit","Retrieve data from virtual memory"],
+   a:0,
+   exp:"The arithmetic logical unit (ALU) carries out the logical operations such as comparisons and arithmetic operations like addition and multiplication. It receives data from registers and is controlled by the control unit."},
+
+{q:"Where can you find the horizontal split bar on MS Word screen?",
+   o:["On the left of horizontal scroll bar","On the right of horizontal scroll bar","On the top of vertical scroll bar","On the bottom of vertical scroll bar"],
+   a:2,
+   exp:"On the top of vertical scroll bar we can find the horizontal split bar on MS Word screen."},
+
+{q:"What is defined as the number of bits that the CPU processes as a unit?",
+   o:["A computer sentence","A computer word","A computer phrase","A computer term"],
+   a:1,
+   exp:"A word is a fixed-sized piece of data handled as a unit by the instruction set or hardware. The number of bits in a word is word size/width/length."},
+
+{q:"*_*_ Systems use a light beam to scan input data and convert it into electrical signals, which are sent to the computer for processing.",
+   o:["Image recognition","Optical recognition","PDF","Application"],
+   a:1,
+   exp:"Optical character recognition or optical character reader is the electronic or mechanical conversion of images of typed, handwritten or printed text into machine-encoded text."},
+
+{q:"What is any text that can be keyed in, such as a memo?",
+   o:["A database","A spreadsheet","A text document","A business presentation"],
+   a:2,
+   exp:"A text document is written, printed, or online document that presents or communicates narrative or tabulated data like an article, letter, memo, report, etc."},
+
+{q:"*_*_ Devices accept the spoken word through a microphone and convert it into binary code that can be understood by the computer.",
+   o:["Speech recognition","Handwriting recognition","Peripheral","All of the above"],
+   a:0,
+   exp:"Speech recognition is the capability of an electronic device to understand spoken words. A microphone records voice and hardware converts analog sound waves to digital audio."},
+
+{q:"Name the technique of processing transactions in random order.",
+   o:["Transaction processing","Batch processing","Offline processing","Sequential file processing"],
+   a:0,
+   exp:"Transaction processing is information processing divided into individual, indivisible operations called transactions. Each transaction must succeed or fail as a complete unit."},
+
+{q:"*_*_ uses an area of memory to temporarily store data from disk that the program might need soon.",
+   o:["Data transferring","DVD","Disk caching","All of the above"],
+   a:2,
+   exp:"A disk cache is a mechanism for improving the time it takes to read from or write to a hard disk. It can be a specified portion of RAM."},
+
+{q:"What is a device that prevents electrical problems from affecting computer data files?",
+   o:["An incremental backup","A full backup","A surge protector","A differential backup"],
+   a:2,
+   exp:"A surge protector prevents electrical problems like voltage spikes from affecting computer components and data files."},
+
+{q:"What type of program lets you produce professional-looking documents containing both text and graphics?",
+   o:["A page composer","A thesaurus","A desktop publisher","A speller checker"],
+   a:2,
+   exp:"Desktop publishers use publishing software to create documents like reports, newsletters, books combining text, images, charts."},
+
+{q:"The letter and number of the intersecting column and row is the:",
+   o:["Cell coordinates","Cell location","Cell position","Cell address"],
+   a:3,
+   exp:"A cell address or cell reference is an alphanumeric value used to identify a specific cell. Letter identifies column, number represents row."},
+
+{q:"What is the standard query language supported by most DBMSs?",
+   o:["Object-oriented language","Report generator language","Structured Query Language (SQL)","Query-by-example (QBE)"],
+   a:2,
+   exp:"Structured Query Language (SQL) is a specialized language for updating, deleting, and requesting information from databases. It is an ANSI and ISO standard."},
+
+{q:"Which of the following are three fundamental characteristics that make a computer useful?",
+   o:["Lightweight, inexpensive, and sturdy","Speed, reliability, and storage capability","Durable, connectible, and renewable","All of the above"],
+   a:1,
+   exp:"The characteristics that make computers powerful are speed, accuracy, diligence, versatility and storage capacity."},
+
+{q:"Which of the following is an appropriate use of groupware?",
+   o:["A top-secret project","A highly classified project","An individual employee project","A team project"],
+   a:3,
+   exp:"Groupware is for team projects. The project team is responsible for contributing to overall project objectives and deliverables."},
+
+{q:"Software used for database management can store data, update it, *_*_ it, retrieve it, report it, and print it.",
+   o:["Manipulate","download","See","All of the above"],
+   a:0,
+   exp:"Software used for database management can store data, update it, manipulate it, retrieve it, report it, and print it."},
+
+{q:"Which of the following is NOT a function of an operating system?",
+   o:["Executing and providing services for applications software","Managing the computer's resources","Establishing a user interface","Formatting a word document"],
+   a:3,
+   exp:"Formatting a word document is a function of application software like MS Word, not OS. OS manages resources, provides interface, executes services."},
+
+{q:"Which of the following helps describe the Windows .NET Server?",
+   o:["It is designed for different levels of network complexity.","It is a direct upgrade from Windows NT.","It is designed to replace Novell's Netware.","It has limited complexity."],
+   a:0,
+   exp:"Windows Server 2003 / .NET Server is a server operating system designed for different levels of network complexity to build, integrate, manage Web-based enterprise applications."},
+
+{q:"In the OSI model, the actual transmission of data is handled in the *_*_ layer.",
+   o:["Data link","Physical","Network","Transport"],
+   a:1,
+   exp:"The physical layer is the lowest layer of OSI model. It is responsible for transmitting individual bits from one node to the next."},
+
+{q:"The process of analyzing large data sets in search of new, previously undiscovered relationships is known as:",
+   o:["Data Mining","Data Marting","Data maintenance","data warehousing"],
+   a:0,
+   exp:"Data Mining is the process of analyzing chunk of unstructured data to find out previously undiscovered information and insights."},
+
+{q:"The focus of the first phase of the systems development life cycle is to:",
+   o:["Design what the new system should do","Analyze and document the existing system","Identify problems and opportunities","Implement the new system"],
+   a:2,
+   exp:"The first phase of SDLC begins by identifying what the organization is trying to do and how they currently achieve it. This is a high level overview identifying problems and opportunities."},
+
+{q:"Which of the following is a network in which computers are located physically close together, often in the same building?",
+   o:["WAN","PAN","MAN","LAN"],
+   a:3,
+   exp:"A local area network (LAN) is a collection of devices connected together in one physical location, such as a building, office, or home."},
+
+{q:"What kind of server converts IP addresses to domain names?",
+   o:["File","DNS","Email","P2P"],
+   a:1,
+   exp:"DNS translates domain names to IP addresses so browsers can load Internet resources."},
+
+{q:"Which of the following is NOT true about laptop computers?",
+   o:["They are typically more expensive than desktops.","They are typically more expensive than desktops.","They often have fewer components than PCs.","They cannot be connected to a PC."],
+   a:3,
+   exp:"Laptops can be connected to a PC. They are typically more expensive than desktops and often have fewer components."}
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+];
+
+let answers={}, index=0, timeLeft, timerInt;
+
+window.onload=()=>{
+  const saved=localStorage.getItem(STORAGE_KEY);
+  if(saved){
+    const data=JSON.parse(saved);
+    answers=data.answers || {};
+    showScore(data);
+  } else {
+    loader.classList.add("hidden");
+    instruction.classList.remove("hidden");
+  }
+};
+
+function startTest(){
+    shuffleArray(questions);
+  instruction.classList.add("hidden");
+  test.classList.remove("hidden");
+  timeLeft=TEST_DURATION_MINUTES*60;
+  timerInt=setInterval(runTimer,1000);
+  buildGrid();
+  loadQ();
+}
+
+function runTimer(){
+  if(timeLeft<=0){submitTest();return;}
+  timeLeft--;
+  timer.innerText=
+    `${String(Math.floor(timeLeft/60)).padStart(2,"0")}:${String(timeLeft%60).padStart(2,"0")}`;
+}
+
+function loadQ(){
+  const q=questions[index];
+  question.innerHTML=q.q;
+options.innerHTML="";
+
+// Create option objects with index
+let opts = q.o.map((text, i) => ({ text, index: i }));
+
+// Shuffle options
+shuffleArray(opts);
+
+opts.forEach((opt)=>{
+  const d=document.createElement("div");
+
+  d.className="option"+(answers[index]===opt.index?" selected":"");
+  d.innerText=opt.text;
+
+  d.onclick=()=>{
+    answers[index]=answers[index]===opt.index?null:opt.index;
+
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+    saved.answers = answers;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+
+    loadQ();
+    updateGrid();
+  };
+
+  options.appendChild(d);
+});
+  prevBtn.disabled=index===0;
+  nextBtn.disabled=index===questions.length-1;
+}
+
+function nextQ(){index++;loadQ();}
+function prevQ(){index--;loadQ();}
+
+function buildGrid(){
+  grid.innerHTML="";
+  questions.forEach((_,i)=>{
+    const d=document.createElement("div");
+    d.innerText=i+1;
+    d.onclick=()=>{index=i;loadQ();};
+    grid.appendChild(d);
+  });
+  updateGrid();
+}
+
+function updateGrid(){
+  [...grid.children].forEach((d,i)=>d.classList.toggle("attempted",answers[i]!=null));
+}
+
+function submitTest(){
+  clearInterval(timerInt);
+  test.classList.add("hidden");
+  loader.classList.remove("hidden");
+  loader.querySelector("p").innerText="Calculating score…";
+
+  let correct=0,wrong=0;
+  questions.forEach((q,i)=>{
+    if(answers[i]==null)return;
+    answers[i]===q.a?correct++:wrong++;
+  });
+
+  const score=+(correct-wrong*NEGATIVE_MARK).toFixed(2);
+
+  const data={
+    name:user.name,
+    score,correct,wrong,
+    unattempted:questions.length-correct-wrong,
+    answers
+  };
+
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
+  showScore(data);
+}
+
+function showScore(r){
+  loader.classList.add("hidden");
+  score.classList.remove("hidden");
+  userScore.innerText=`Hi ${r.name}, your score is ${r.score}`;
+  stats.innerHTML=
+    `Correct: ${r.correct}<br>Wrong: ${r.wrong}<br>Unattempted: ${r.unattempted}<br><b></b>`;
+  filterQ("all",document.querySelector(".filter button"));
+}
+
+function filterQ(type,btn){
+  document.querySelectorAll(".filter button").forEach(b=>b.classList.remove("active"));
+  btn.classList.add("active");
+  review.innerHTML="";
+  questions.forEach((q,i)=>{
+    const a=answers[i];
+    if(type==="correct"&&a!==q.a)return;
+    if(type==="wrong"&&(a==null||a===q.a))return;
+    if(type==="unattempted"&&a!=null)return;
+
+    const c=document.createElement("div");
+    c.className="card";
+    c.innerHTML=`
+      <b>${q.q}</b><br>
+      Your: ${a!=null?q.o[a]:"—"}<br>
+      Correct: ${q.o[q.a]}
+      <div class="exp-toggle" onclick="toggleExp(this)">Show Explanation ▼</div>
+      <div class="exp-text">${q.e}</div>
+    `;
+    review.appendChild(c);
+  });
+}
+
+function toggleExp(el){
+  const box=el.nextElementSibling;
+  box.style.display=box.style.display==="block"?"none":"block";
+  el.innerHTML=box.style.display==="block"?"Hide Explanation ▲":"Show Explanation ▼";
+}
+
+function reattempt(){popup.style.display="flex";}
+function confirmReattempt(){localStorage.removeItem(STORAGE_KEY);location.reload();}
+</script>
+</body>
+</html>
