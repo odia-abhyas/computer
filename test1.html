@@ -1,1 +1,450 @@
-<h1>Sectional mocktest 1</h1>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EduMocker Test</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<style>
+  .q-image-wrap{margin:12px 0;display:flex;justify-content:center;align-items:center}
+  .img-loader{width:50px;height:50px;border:5px solid #ddd;border-top:5px solid #2c5364;border-radius:50%;animation:spin 1s linear infinite}
+  .q-image{max-width:100%;border-radius:12px;display:none}
+  *{box-sizing:border-box;font-family:Arial,Helvetica,sans-serif}
+  body{margin:0;background:#f4f6f8;padding:0}
+  .loader{height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center}
+  .circle{width:70px;height:70px;border:7px solid #ddd;border-top:7px solid #2c5364;border-radius:50%;animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .hidden{display:none}
+  .header{background:#fff;padding:12px;display:flex;justify-content:space-between;border-bottom:1px solid #ddd}
+  .container{padding:14px}
+  button{padding:12px;border:none;border-radius:10px;background:#2c5364;color:#fff;font-size:15px;cursor:pointer}
+  button:disabled{opacity:.4}
+  .q-inst{font-size:14px}
+  .question{font-weight:bold;margin:8px 0}
+  .option{background:#fff;border:1px solid #ccc;padding:12px;border-radius:10px;margin-bottom:10px;cursor:pointer}
+  .option.selected{background:#e8f1f5;border-color:#2c5364}
+  .nav{display:flex;justify-content:space-between;margin:10px 0}
+  .grid{display:flex;flex-wrap:wrap;gap:6px}
+  .grid div{width:32px;height:32px;border:1px solid #2c5364;display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .grid .attempted{background:#2c5364;color:#fff;border-radius:50%}
+  .score{padding:16px}
+  .card{background:#fff;padding:12px;border-radius:12px;margin-bottom:10px}
+  .filter{display:flex;gap:6px;margin-top:10px}
+  .filter button{flex:1;background:#ccc;color:#000}
+  .filter .active{background:#2c5364;color:#fff}
+  .popup{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;justify-content:center;align-items:center}
+  .popup-box{background:#fff;padding:18px;border-radius:14px;width:85%;text-align:center}
+</style>
+</head>
+<body>
+
+<div id="loader" class="loader">
+  <div class="circle"></div>
+  <p>Checking user…</p>
+</div>
+
+<div id="instruction" class="hidden container">
+  <h3>Instructions</h3>
+  <ul>
+    <li>Time: 15 Minutes</li>
+    <li>Negative Marking: 0.25 per wrong answer</li>
+    <li>Submit anytime</li>
+  </ul>
+  <button onclick="startTest()">Start Test</button>
+</div>
+
+<div id="test" class="hidden">
+  <div class="header">
+    <b>OSSC PYQ Prelims 23Jun, 2024</b>
+    <span id="timer">15:00</span>
+  </div>
+  <div class="container">
+    <div class="q-inst" id="qInst"></div>
+    <div class="question" id="question"></div>
+
+    <div id="imgWrap" class="q-image-wrap hidden">
+      <div id="imgLoader" class="img-loader"></div>
+      <img id="qImg" class="q-image">
+    </div>
+
+    <div id="options"></div>
+
+    <div class="nav">
+      <button id="prevBtn" onclick="prevQ()">Previous</button>
+      <button id="nextBtn" onclick="nextQ()">Next</button>
+    </div>
+
+    <div class="grid" id="grid"></div>
+    <br>
+    <button onclick="submitTest()">Submit Test</button>
+  </div>
+</div>
+
+<div id="score" class="hidden score">
+  <h3>OSSC PYQ Prelims 23Jun, 2024</h3>
+  <p id="userScore"></p>
+  <div class="card" id="stats"></div>
+
+  <div class="filter">
+    <button class="active" onclick="filterQ('all',this)">All</button>
+    <button onclick="filterQ('correct',this)">Correct</button>
+    <button onclick="filterQ('wrong',this)">Wrong</button>
+    <button onclick="filterQ('unattempted',this)">Unattempted</button>
+  </div>
+
+  <div id="review"></div>
+  <br>
+  <button onclick="reattempt()">Reattempt</button>
+</div>
+
+<div class="popup" id="popup">
+  <div class="popup-box">
+    <p>Your previous score & rank will be replaced.</p>
+    <button onclick="confirmReattempt()">OK</button>
+  </div>
+</div>
+
+<script>
+firebase.initializeApp({
+  apiKey: "AIzaSyAm8LD9iSm24vG2rc_bBSjXuATXxs7-lbE",
+  authDomain: "odia-abhyas.firebaseapp.com",
+  projectId: "odia-abhyas"
+});
+const db = firebase.firestore();
+
+const TEST_ID = "OSSC_CGL_PYQ_Prelims";
+const STORAGE_KEY = "RESULT_" + TEST_ID;
+const TEST_DURATION_MINUTES = 15;
+const NEGATIVE_MARK = 0.25;
+
+const user = {
+  phone: localStorage.getItem("user_phone"),
+  name: localStorage.getItem("user_name")
+};
+if(!user.phone){ alert("Login required"); throw ""; }
+
+/* ===== Added explanations to questions ===== */
+const questions = [
+
+{q:"Which is not the portable computer?",
+   o:["Micro-processor","Calculator","Series Computes","Parallel Computers"],
+   a:0,
+   exp:"Micro-processor is a component, not a portable computer. Calculator, Series Computes, and Parallel Computers can be portable."},
+
+{q:"The ROM chip which can be rewritten several times and requires the action of ultraviolet radiations to erase its contents is *_*_.",
+   o:["Flash memory","PROM","EEPROM","EPROM"],
+   a:3,
+   exp:"EPROM (Erasable Programmable Read-Only Memory) is erased using ultraviolet light."},
+
+{q:"FPI stands for *_*_.",
+   o:["Faults per inch","Frames per inch","Figure per inch","Film per inch"],
+   a:1,
+   exp:"FPI stands for Frames per inch, used to measure display device performance."},
+
+{q:"A terabyte comprises",
+   o:["1024 gigabyte","1024 kilobyte","1024 megabyte","1024 byte"],
+   a:0,
+   exp:"1 Terabyte = 1024 Gigabytes in binary system."},
+
+{q:"The memory which is utmost accessible to the processor is *_*_.",
+   o:["Cache memory","RAM","Hard disk","Flash memory"],
+   a:0,
+   exp:"Cache memory is the fastest and most accessible to CPU, placed between CPU and RAM."},
+
+{q:"In which kind of disk does the read/write head physically touches the surface?",
+   o:["Hard Disk","Compact Disk","Floppy Disk","all of the above"],
+   a:2,
+   exp:"In Floppy Disk, the read/write head physically touches the magnetic surface. HDD heads float above the platter."},
+
+{q:"What is the correct syntax for typing a function into a cell?",
+   o:["Equal sign, Function Name, Matching brackets","Function Name, Equal sign, Matching brackets","Equal sign, Matching brackets, Function Name","None of the above"],
+   a:0,
+   exp:"Excel function syntax: =FunctionName(arguments), i.e. Equal sign, Function Name, Matching brackets."},
+
+{q:"If you see a small red triangle in the top right corner of a cell, it means there is something attached to the call. What is it?",
+   o:["A comment","An attachment","An error","None of these"],
+   a:0,
+   exp:"In Excel, a red triangle indicates a comment/note attached to the cell."},
+
+{q:"Cache memory is–",
+   o:["Smaller and faster than main storage","Bigger and slower than main storage","Smaller but slower than main memory","Bigger and faster than main memory"],
+   a:0,
+   exp:"Cache memory is smaller and faster than main memory (RAM) to reduce CPU access time."},
+
+{q:"The overall design, construction, organization and interconnecting of the various components of a computer system is referred as–",
+   o:["Computer Architecture","Computer Flowchart","Computer Algorithm","All of the above"],
+   a:0,
+   exp:"Computer Architecture refers to the overall design and organization of computer system components."},
+
+{q:"BIOS are responsible for–",
+   o:["Handling the particulars of input/output operations.","Output operations","Input operations","All of the above"],
+   a:0,
+   exp:"BIOS handles I/O operations during boot and acts as interface between OS and hardware."},
+
+{q:"BISYNC is an abbreviation for–",
+   o:["Binary Input/Binary Output","Binary synchronous","Binary digit","All of the above"],
+   a:1,
+   exp:"BISYNC stands for Binary Synchronous Communications, an IBM protocol."},
+
+{q:"A process of trying out a new product by independent users before it is finally manufactured/developed–",
+   o:["Alpha test","Beta Test","Gamma test","All of the above"],
+   a:1,
+   exp:"Beta Test is done by real users outside the company before final release."},
+
+{q:"An E-mail protocol for storage, management and change, especially in corporate offices –",
+   o:["Message handling service","Postal service's","Data storage","All of the above"],
+   a:0,
+   exp:"MHS - Message Handling Service is an email protocol for storage and management."},
+
+{q:"Password is–",
+   o:["Code by which a user gains access to a computer system","Pass for viewing movie","Entrance without paying something","All of the above"],
+   a:0,
+   exp:"Password is a secret code used to authenticate and gain system access."},
+
+{q:"The technique where digital signals are converted to its analog form for transmission over an analog facility is called.",
+   o:["Modulation","Digitization","Multiprocessing","All of the above"],
+   a:0,
+   exp:"Modulation converts digital signals to analog for transmission over analog lines."},
+
+{q:"Narrowband channel is a communication channels.",
+   o:["That handles low volumes of data","Used mainly for telegraph lines and low speed terminals","Both (A) and (B)","All of the above"],
+   a:2,
+   exp:"Narrowband channels handle low volumes of data and are used for telegraph/low speed terminals."},
+
+{q:"MIME is an acronym for ....",
+   o:["Multiprogramming Internet Mail Extension","Multicasting Internet Mail Extension","Multiple Internet Mail Extension","Multipurpose Internet Mail Extension"],
+   a:3,
+   exp:"MIME stands for Multipurpose Internet Mail Extensions, used for email attachments."},
+
+{q:"The *_*_ Settings are automatic and standard.",
+   o:["Default","CPU","Peripheral","User-friendly"],
+   a:0,
+   exp:"Default settings are pre-configured, automatic and standard settings."},
+
+{q:"Pop-ups are a form of *_*_ on the World Wide Web?",
+   o:["Instant Messaging","Search Engines","Browsers","Online Advertising"],
+   a:3,
+   exp:"Pop-ups are a form of Online Advertising that appears over browser windows."},
+
+{q:"Which of the following is true about Operating System?",
+   o:["It is an interface between user and the computer.","It manages all resources","It does all Memory management and Process management tasks","All are true"],
+   a:3,
+   exp:"OS is an interface, manages all resources, and handles memory and process management."},
+
+{q:"All formula in Excel start with",
+   o:["%","+","=","-"],
+   a:2,
+   exp:"All Excel formulas must start with an equals sign =."},
+
+{q:"Which of the following displays the contents of the active cell?",
+   o:["Active cell","Formula bar","Menu bar","Name box"],
+   a:1,
+   exp:"Formula bar displays and allows editing of active cell contents."},
+
+{q:"Tab scrolling buttons -",
+   o:["Allow you to view a different worksheet","Allow you to view additional worksheet row down","Allow you to view additional worksheet columns to the right","Allow you to view additional sheet tabs"],
+   a:3,
+   exp:"Tab scrolling buttons are used to view additional sheet tabs when they don't fit."},
+
+{q:"What is the keyboard shortcut for creating a chart from the selected cells?",
+   o:["F3","F5","F7","F11"],
+   a:3,
+   exp:"F11 creates a default chart on a new sheet from selected data in Excel."}
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  ];
+/* ===== End questions with explanations ===== */
+
+let answers={}, index=0, timeLeft, timerInt;
+
+window.onload = () => {
+  const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+  if(saved){
+    if(saved.answers) answers = saved.answers; // restore previous answers
+    showScore(saved);
+  } else {
+    loader.classList.add("hidden");
+    instruction.classList.remove("hidden");
+  }
+};
+
+function startTest(){
+  // Request Fullscreen Mode
+  const elem = document.documentElement; // This selects the whole page
+  if (elem.requestFullscreen) {
+    elem.requestFullscreen();
+  } else if (elem.webkitRequestFullscreen) { /* Safari */
+    elem.webkitRequestFullscreen();
+  } else if (elem.msRequestFullscreen) { /* IE11 */
+    elem.msRequestFullscreen();
+  }
+
+  // Your existing logic
+  instruction.classList.add("hidden");
+  test.classList.remove("hidden");
+  timeLeft = TEST_DURATION_MINUTES * 60;
+  timerInt = setInterval(runTimer, 1000);
+  buildGrid();
+  loadQ();
+}
+function runTimer(){
+  if(timeLeft<=0){submitTest();return;}
+  timeLeft--;
+  timer.innerText=`${String(Math.floor(timeLeft/60)).padStart(2,"0")}:${String(timeLeft%60).padStart(2,"0")}`;
+}
+
+function loadQ(){
+  const q = questions[index];
+    qInst.innerHTML = q.inst || "Choose the correct answer";
+  question.innerHTML = (index + 1) + ". " + q.q;
+
+  /* ===== IMAGE LOGIC ===== */
+  imgWrap.classList.add("hidden");
+  qImg.style.display = "none";
+  imgLoader.style.display = "block";
+
+  if(q.img){
+    imgWrap.classList.remove("hidden");
+    qImg.src = q.img;
+
+    qImg.onload = () => {
+      imgLoader.style.display = "none";
+      qImg.style.display = "block";
+    };
+
+    qImg.onerror = () => {
+      imgWrap.classList.add("hidden");
+    };
+  }
+
+  options.innerHTML="";
+  q.o.forEach((t,i)=>{
+    const d=document.createElement("div");
+    d.className="option"+(answers[index]===i?" selected":"");
+    d.innerText=t;
+    d.onclick=()=>{
+      answers[index]=answers[index]===i?null:i;
+
+      /* ===== Save answers to localStorage ===== */
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+      saved.answers = answers;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+      /* ===== End save ===== */
+
+      loadQ();
+      updateGrid();
+    };
+    options.appendChild(d);
+  });
+
+  prevBtn.disabled = index === 0;
+  nextBtn.disabled = index === questions.length - 1;
+}
+
+function nextQ(){index++;loadQ();}
+function prevQ(){index--;loadQ();}
+
+function buildGrid(){
+  grid.innerHTML="";
+  questions.forEach((_,i)=>{
+    const d=document.createElement("div");
+    d.innerText=i+1;
+    d.onclick=()=>{index=i;loadQ();};
+    grid.appendChild(d);
+  });
+}
+
+function updateGrid(){
+  [...grid.children].forEach((d,i)=>d.classList.toggle("attempted",answers[i]!=null));
+}
+
+function submitTest(){
+  clearInterval(timerInt);
+  test.classList.add("hidden");
+  loader.classList.remove("hidden");
+  loader.querySelector("p").innerText="Saving score & calculating rank…";
+
+  let correct=0,wrong=0;
+  questions.forEach((q,i)=>{
+    if(answers[i]==null)return;
+    answers[i]===q.a?correct++:wrong++;
+  });
+
+  const score=+(correct-wrong*NEGATIVE_MARK).toFixed(2);
+
+  const baseData={
+    phone:user.phone,
+    name:user.name,
+    score,correct,wrong,
+    unattempted:questions.length-correct-wrong,
+    updatedAt:Date.now()
+  };
+
+  db.collection("tests").doc(TEST_ID).collection("results").doc(user.phone)
+  .set(baseData,{merge:true})
+  .then(()=>calculateRank(baseData));
+}
+
+function calculateRank(myData){
+  db.collection("tests").doc(TEST_ID).collection("results").get()
+  .then(snap=>{
+    const arr=snap.docs.map(d=>({...d.data(),id:d.id}));
+    arr.sort((a,b)=>b.score-a.score);
+    const rank=arr.findIndex(x=>x.id===user.phone)+1;
+    myData.rankText=`${rank} / ${arr.length}`;
+    myData.answers=answers;
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(myData));
+    showScore(myData);
+  });
+}
+
+function showScore(r){
+  loader.classList.add("hidden");
+  score.classList.remove("hidden");
+  userScore.innerText=`Hi ${r.name}, your score is ${r.score}`;
+  stats.innerHTML=`Correct: ${r.correct}<br>Wrong: ${r.wrong}<br>Unattempted: ${r.unattempted}<br><b>Rank: ${r.rankText}</b>`;
+  filterQ("all",document.querySelector(".filter button"));
+}
+
+function filterQ(type,btn){
+  document.querySelectorAll(".filter button").forEach(b=>b.classList.remove("active"));
+  btn.classList.add("active");
+  review.innerHTML="";
+  questions.forEach((q,i)=>{
+    const a=answers[i];
+    if(type==="correct"&&a!==q.a)return;
+    if(type==="wrong"&&(a==null||a===q.a))return;
+    if(type==="unattempted"&&a!=null)return;
+    const c=document.createElement("div");
+    c.className="card";
+    c.innerHTML=`
+      <b>${q.q}</b><br>
+      Your: ${a!=null?q.o[a]:"—"}<br>
+      Correct: ${q.o[q.a]}<br>
+      <details>
+        <summary>Show Explanation</summary>
+        <p>${q.exp || "No explanation provided."}</p>
+      </details>
+    `;
+    review.appendChild(c);
+  });
+}
+
+function reattempt(){popup.style.display="flex";}
+function confirmReattempt(){localStorage.removeItem(STORAGE_KEY);location.reload();}
+</script>
+</body>
+</html>
